@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+
+setterm -cursor off
+
+# felipe pegoraro
+version="\n\e[34;1m version:\e[0m 1.0.1\n"
+help="
+    -h --help     Exibe Ajuda  
+    -v --version  Exibe Versão 
+    -p            Exibe Letras em pt-br 
+    -e            Exibe Letras em ingles
+
+    caso queira ...
+    cmd: lyrics | less -R 
+"
+
+# COLORS =================
+# ===============================================
+	# color_blue=`tput setaf 1`
+  color_red=`tput setaf 1`
+  color_green=`tput setaf 2`
+  color_purple=`tput setaf 4`
+  endc=`tput sgr0`
+# endcolors ============== 
+
+# Variáveis ============== 
+  cols=$(tput cols)
+  colstwo=$(echo "(${cols}/2)-3" | bc)
+  line=$(printf %${cols}s | tr " " "-")
+  space="    "
+# ===============================================
+
+exitfunction(){
+	setterm -cursor on 
+	exit 1
+}
+
+
+# basic FUNCTIONS ===============================
+# ===============================================
+header(){
+  clear
+  tput cup 0 0
+  echo -e "${line}"
+  tput cup 1 ${colstwo}  
+  echo -e "${color_purple}Lyrics${endc}"
+  echo -e "$line"
+
+}
+ending(){
+  echo -e "\n\n${color_purple} > ${ArtistName}${endc}"
+  echo -e "$color_blue$line$endc" 
+
+  rm traducao.html
+  rm trad
+  setterm -cursor on
+	exit 0
+}
+# ===============================================
+
+
+
+
+
+# FLAGS ==========================================
+# ================================================
+if [ ! -z "$1" ]; then
+  case "$1" in
+    -h | --help)
+      # tput cup 4 4
+      echo "$help"  
+      setterm -cursor on
+      exit 0
+    ;;    
+  
+    -v | --version)  
+      # tput cup 4 4
+      echo -e "$version"
+      setterm -cursor on
+      exit 0
+    ;;
+
+    -p) lang="pt" ;;
+    -e) lang="en" ;;
+    *)
+      echo -e "\n${color_red}${space}error:${endc} invalid flag"
+      echo "$help"
+			exitfunction
+    ;;
+  esac
+else 
+  # tput cup 4 3
+  lang="en"
+  # read -s -p "Select Language: (pt/en): " lang
+fi
+
+# FIND LYRICS
+lyrics_find(){
+  echo -ne " > searching... ${color_purple}${MusicName} ${endc}"
+  wget --xattr -q "https://www.letras.mus.br/$ArtistName/$MusicName/traducao.html"
+
+	if [[ "$?" != 0 ]]; then 
+    echo -e "\n${color_red} > not found ${endc}"
+    [[ -s "traducao.html" ]] && rm traducao.html
+		exitfunction
+	else
+		tput cup 3 1
+		echo -e "${color_purple}> ${MusicName}${endc}${space}${space}${space}${space}${space}${space}${space}${space}${space}${space}${space}"
+	fi
+}
+
+
+# Select language ===================================
+select_lang(){
+  if [ "$lang" = "pt" ]; then
+   LyricsEchoPT
+  elif [ "$lang" = "en" ]; then
+    LyricsEchoEN
+  else
+	  echo "error!"
+	  rm traducao.html
+  fi
+}
+# ===================================================
+
+
+# FIND ARTIST____SONG
+# ===================================================
+running=$(ps -A | grep -E "(cmus|ncmpcpp)" | awk '{print $4}' | head -n 1)
+if [ "$running" = "cmus" ]; then
+	ArtistName=$(cmus-remote -Q | grep "^tag artist" | awk 'BEGIN{FIELDWIDTHS = "11 30"};{print $2}' | tr '[A-Z]' '[a-z]' | tr ' ' '-' | tr '"' '-')
+  MusicName=$(cmus-remote -Q | grep "^tag title" | awk 'BEGIN{FIELDWIDTHS = "10 30"};{print $2}' | tr '[A-Z]' '[a-z]' | tr ' ' '-')
+
+	[[ -z "$ArtistName" || -z "$MusicName" ]] && echo "stopped." && exitfunction 
+elif [ "$running" = "ncmpcpp" ]; then
+  ArtistName=$(mpc | head -n 1 | awk -F' - ' '{print $1}' | tr ' ' '-' | tr '[A-Z]' '[a-z]')
+  MusicName=$(mpc | head -n 1 | awk -F' - ' '{print $2}' | tr ' ' '-' | tr '[A-Z]' '[a-z]')
+else
+  echo -e "$color_red Nenhum player está ativo!!!                $endc"
+  exitfunction	
+fi
+# ===================================================
+
+
+# Search in Portuguese ==============================
+# ===================================================
+LyricsEchoPT(){
+	grep '<div class="cnt-trad.*</div>' traducao.html | sed 's/<p><span>/\n\n    /g;s/<\/span><br\/><span>/\n    /g;s/<\/span><br\/><\/p>/ /g;s/\&\#34;/\"/g;s/<\/div> <\/div>//g ' > trad
+ 
+  traduzido=$(grep -n -oP "<h3>" trad | tail -n 1 | sed 's/:<h3>//g')
+	cat "trad" | sed 's|.*<h3>|'"${space}"'|g' | sed 's/.*<\/h3>//g'| tail +$traduzido
+}
+# ==================================================
+
+
+
+# Search in English ================================
+# ==================================================
+LyricsEchoEN(){
+  grep '<div class="cnt-trad.*</div>' traducao.html | sed 's/<p><span>/\n\n    /g;s/<\/span><br\/><span>/\n    /g;s/<\/span><br\/><\/p>/ /g;s/\&\#34;/\"/g;s/\&\#39;/\`/g' > trad
+ 
+  traduzido=$(grep -n -oP "<h3>" trad | tail -n 1 | sed 's/:<h3>//g')
+
+  cat "trad" | sed 's/<div class=.*>//g'| sed 's/<\/div>//g'| sed 's|<h3>|'"${space}"'|g' |  head -n "$traduzido"
+}
+# ==================================================
+
+
+
+
+
+# CALL =============================================
+header # ------ exibe cabeçalho
+# -------------- --- verifica flags
+lyrics_find # -- encontra as Letras 
+select_lang # -- verifica linguagem
+# -------------- --- echo lyrics
+ending # ------- exibe termino
+# ==================================================

@@ -1,0 +1,170 @@
+#!/bin/bash
+# ===============
+# author.: FelipeFSP
+# date...: 01/01/2022
+# license: none
+# ===============
+
+# VARIABLES ==================
+redc='\e[1;31m'
+grec='\e[1;32m'
+purp='\e[1;34m'
+endl='\e[0;m'
+# ----------------------------
+def_num='2'
+_select='false'
+_Chn='false'
+# ----------------------------
+_views="true" ; _title="true"
+_link="true"  ; _likes="true"
+_download="false"
+
+
+
+# HEL =======================
+help(){
+cat <<EOF
+
+  -u |            -->  select a channel 
+  -s | --select   -->  select a video [and run (mpv)]
+  -t | --title    -->  dont show title
+  -l | --link     -->  dont show link
+  -k | --likes    -->  dont show likes
+  -v | --views    -->  dont show views
+  -h | --help     -->  show this --help
+  -d | --download -->  download selected video
+
+  [1-9] -->  [n] videos 
+  obs: default == '2'
+
+  obs: -d and -s support regex OR operator: (A|B)
+  e.g..............: ./yt.sh -u -d -s -9 
+  > select a video: (1|4|7)
+
+  e.g..............: ./yt.sh -u -s -3 -k -v
+  e.g..............: ./yt.sh -s -3  
+
+EOF
+}
+
+# FLA =======================
+for arg in "$@"; do
+  case "$arg" in
+     -h|--help) help && exit 0 ;;
+     -t|--title) _title="false" ;;&
+     -l|--link)  _link="false"  ;;&
+     -k|--likes) _likes="false" ;;&
+     -v|--views) _views="false" ;;&
+     -s|--select) _select="true" ;;&
+		 -d|--download) _download="true";;&
+		 -u) _Chn='true' ;;&
+     -0|0) echo -e "${redc}[1-9]${endl} only." ; exit 1 ;;
+     -10|10) echo -e "${redc}[1-9]${endl} only." ; exit 1 ;;
+     -[1-9]|[1-9])
+	     def_num=$(echo "$arg" | grep -oP "[\d]")
+     ;;
+  esac
+done
+
+declare -x subscriptions="${HOME}/.subscriptions"
+
+
+link_name(){
+  pass=$(dd if=/dev/random bs=32 count=1 2>/dev/null | od -An -tx1 | sed 's/ //g' | head -n 1)
+  filename="/tmp/${pass}"
+
+  if [[ "${_Chn}" == 'true' ]]; then
+    lines=$(grep -oP "^[^#].*(?=/videos)" "$subscriptions" | wc -l)
+
+    for ((i=1;i<= lines;i++)); do
+      grep -oP "^[^#].*(?=/videos)" "$subscriptions" | sed "s/^/ | \[$i\] /g" | head -n "$i" | tail -n1
+      grep -oP "^[^#].*(?=/videos)" "$subscriptions" | sed "s/^/  \[$i\] /g" | head -n "$i" | tail -n1 >> "${filename}_chnlist"
+    done
+
+    echo 
+		read -rp " > Select a number: " numberChannel
+
+    link=$(grep -oP "(?<=\s\s\[${numberChannel}\]).*" "${filename}_chnlist" | head -n1)
+  else 
+    read -rp " > link: " link
+	fi
+
+  if [[ $(echo "$link" | awk -F'/' '{print $3}') != 'www.youtube.com' ]]; then
+     echo -e " > ${redc}wrong/invalid${endl} link"
+     echo -e " ${grec}>${endl} i.g: https://www.youtube.com/c/<CHANNEL_NAME>"
+     echo -e " ${grec}>${endl} i.g: https://www.youtube.com/<CHANNEL_ID>"
+     exit 1
+  fi
+}
+
+
+
+title_id(){
+	wget -q "$(echo $link)" -O "${filename}" 
+
+  chn_title=$(grep -oP "(?<=\<title\>).*(?i)(?=\-\s.*</title>)" "${filename}")
+  chn_id=$(grep -oP "(?<=channel_id=)[\w\d\s_]+" "${filename}" | head -n1)
+# }
+
+# channel_info(){
+  echo -e " > channel.......: ${purp}${chn_title}${endl}"
+  echo -e " > id_channel....: ${purp}${chn_id}${endl}"
+}
+
+
+
+lst_videos(){
+  wget -q "https://www.youtube.com/feeds/videos.xml?channel_id=${chn_id}" -O "${filename}_videos"
+
+  [[ "${def_num}" -gt '1' ]] && plur='s' || plur=''
+  echo -e "\n > last ${def_num} video${plur}.:\n"
+
+  for (( i=0; i <= def_num; i++ )); do
+     if [[ "$_title" = "true" ]]; then
+       grep -noP "(?<=<media:title>).*(?=</media:title>)" "${filename}_videos" | sed -E "s/[0-9]*:/ | [${i}] - /g" | head -n "$i" | tail -n 1
+     fi
+	 
+     if [[ "$_link" = "true" ]]; then 
+       grep -oP "<yt:videoId>.*(?=</yt:videoId>)" "${filename}_videos" | sed "s/<yt\:videoId>/ | [$i] - https\:\/\/www\.youtube\.com\/watch\?v\=/g" | head -n "$i" | tail -n 1 
+     fi
+
+     grep -oP "<yt:videoId>.*(?=</yt:videoId>)" "${filename}_videos" | sed "s/<yt\:videoId>/ | [$i] - https\:\/\/www\.youtube\.com\/watch\?v\=/g" | head -n "$i" | tail -n 1 >> "${filename}_temp"
+    
+     if [[ "$_views" = "true" ]]; then
+       grep -oP "(?<=<media:statistics\s).*(?=\"/>)" "${filename}_videos" | head -n "$i" | tail -n 1 | sed "s/views=\"/ | [$i] - views: /g"
+     fi
+
+     if [[ "$_likes" = "true" ]]; then 
+       grep -oP "(?<=<media:starRating\s)count=\"\d*(?=\".*/>)" "${filename}_videos" | head -n "$i" | tail -n 1 | sed -E "s/count=\"/ | [$i] - likes: /g"
+     fi
+
+      [[ "${def_num}" -gt '1' ]] && echo " +---" 
+  done
+}
+
+
+
+link_name
+setterm -cursor off
+title_id
+# channel_info
+lst_videos
+[[ -s "$filename" ]] && rm "${filename}"
+[[ -s "${filename}_videos" ]] && rm "${filename}_videos"
+
+if [[ "${_select}" == 'true' ]]; then
+    setterm -cursor on
+    echo ; read -rp " > Select one: " linkTwo
+    echo -e " ${grec}>${endl} Loading... pls wait!" 
+
+		if [[ "$_download" == "true" ]]; then
+			[[ ! $(command -v yt-dlp) ]] && echo "${redc} > yt-dl:${endl} command not found !!!" && exit 1
+			grep -oP "(?<=\|\s\[$linkTwo\]\s-\s).*" "${filename}_temp" | xargs yt-dlp && rm "${filename}_temp" 
+			exit 1
+		else 
+			grep -oP "(?<=\|\s\[$linkTwo\]\s-\s).*" "${filename}_temp" | xargs mpv --ytdl-format=18 && rm "${filename}_temp"
+		fi
+fi
+
+setterm -cursor on
+exit 0
