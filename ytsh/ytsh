@@ -1,9 +1,6 @@
 #!/bin/bash
-# ===============
-# author.: FelipeFSP
+# author.: Felipe Pegoraro
 # date...: 01/01/2022
-# license: none
-# ===============
 
 # VARIABLES ==================
 redc='\e[1;31m'
@@ -21,7 +18,7 @@ _download="false"
 
 
 
-# HEL =======================
+# HELP =======================
 help(){
 cat <<EOF
 
@@ -162,6 +159,7 @@ if [[ "${_select}" == 'true' ]]; then
 			grep -oP "(?<=\|\s\[$linkTwo\]\s-\s).*" "${filename}_temp" | xargs yt-dlp && rm "${filename}_temp" 
 			exit 1
 		else 
+			# edit `--ytdl-format=18` if you want..
 			grep -oP "(?<=\|\s\[$linkTwo\]\s-\s).*" "${filename}_temp" | xargs mpv --ytdl-format=18 && rm "${filename}_temp"
 		fi
 fi

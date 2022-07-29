@@ -1,19 +1,14 @@
-### dependencies 
+## Dependencies 
 - ``mpv`` 
 - ``yt-dlp``
 
-### download
-```sh 
-git clone https://github.com/FelipeFSP/ytsh -o ytsh
-cd !$ && sudo chmod +x ytsh
-```
 ```sh
 # edit: subscriptions ...
-mv subscriptions "${HOME}/.subscriptions"
+mv subscriptions ~/.subscriptions
 ./ytsh --help
 ```
 
-### examples 
+## Examples 
 ```shell
 ./ytsh -u -s -5
 ./ytsh -s -k -v

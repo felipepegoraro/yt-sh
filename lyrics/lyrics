@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# Felipe Pegoraro, ??/0(1|2)?/2022
 
 setterm -cursor off
 
-# felipe pegoraro
 version="\n\e[34;1m version:\e[0m 1.0.1\n"
 help="
     -h --help     Exibe Ajuda  
@@ -14,16 +14,12 @@ help="
     cmd: lyrics | less -R 
 "
 
-# COLORS =================
 # ===============================================
 	# color_blue=`tput setaf 1`
   color_red=`tput setaf 1`
   color_green=`tput setaf 2`
   color_purple=`tput setaf 4`
   endc=`tput sgr0`
-# endcolors ============== 
-
-# Variáveis ============== 
   cols=$(tput cols)
   colstwo=$(echo "(${cols}/2)-3" | bc)
   line=$(printf %${cols}s | tr " " "-")
@@ -36,7 +32,6 @@ exitfunction(){
 }
 
 
-# basic FUNCTIONS ===============================
 # ===============================================
 header(){
   clear
@@ -57,9 +52,6 @@ ending(){
 	exit 0
 }
 # ===============================================
-
-
-
 
 
 # FLAGS ==========================================
@@ -164,9 +156,6 @@ LyricsEchoEN(){
   cat "trad" | sed 's/<div class=.*>//g'| sed 's/<\/div>//g'| sed 's|<h3>|'"${space}"'|g' |  head -n "$traduzido"
 }
 # ==================================================
-
-
-
 
 
 # CALL =============================================
