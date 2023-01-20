@@ -1,4 +1,0 @@
-## lyrics
-```sh
-./lyrics --help 
-```
